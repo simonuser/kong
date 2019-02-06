@@ -21,6 +21,7 @@ local certificate = require "kong.runloop.certificate"
 
 
 local kong        = kong
+local ipairs      = ipairs
 local tostring    = tostring
 local tonumber    = tonumber
 local sub         = string.sub
@@ -59,13 +60,6 @@ end
 
 do
   -- Given a protocol, return the subsystem that handles it
-  local protocol_subsystem = {
-    http = "http",
-    https = "http",
-    tcp = "stream",
-    tls = "stream",
-  }
-
   local router
   local router_version
 
@@ -77,34 +71,49 @@ do
         return nil, "could not load routes: " .. err
       end
 
-      local service_pk = route.service
-
-      if not service_pk then
-        return nil, "route (" .. route.id .. ") is not associated with service"
+      local process_route
+      for _, protocol in ipairs(route.protocols) do
+        if constants.PROTOCOLS_WITH_SUBSYSTEM[protocol] == subsystem then
+          process_route = true
+          break
+        end
       end
 
-      local service, err = db.services:select(service_pk)
-      if not service then
-        return nil, "could not find service for route (" .. route.id .. "): " ..
-                    err
-      end
+      if process_route then
+        local service_pk = route.service
 
-      local stype = protocol_subsystem[service.protocol]
-      if subsystem == stype then
-        local r = {
-          route   = route,
-          service = service,
-        }
+        local service
+        local service_subsystem
 
-        if stype == "http" and route.hosts then
-          -- TODO: headers should probably be moved to route
-          r.headers = {
-            host = route.hosts,
-          }
+        if service_pk then
+          service, err = db.services:select(service_pk)
+          if not service then
+            return nil, "could not find service for route (" .. route.id .. "): " ..
+                        err
+          end
+
+          service_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM[service.protocol]
+
+        else
+          service_subsystem = subsystem
         end
 
-        i = i + 1
-        routes[i] = r
+        if service_subsystem == subsystem then
+          local r = {
+            route   = route,
+            service = service,
+          }
+
+          if service_subsystem == "http" and route.hosts then
+            -- TODO: headers should probably be moved to route
+            r.headers = {
+              host = route.hosts,
+            }
+          end
+
+          i = i + 1
+          routes[i] = r
+        end
       end
     end
 
