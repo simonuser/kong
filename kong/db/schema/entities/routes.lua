@@ -103,7 +103,7 @@ return {
                          },
                        },
                      }, },
-    { service = { type = "foreign", reference = "services", required = true }, },
+    { service = { type = "foreign", reference = "services", required = false }, },
   },
 
   entity_checks = {
