@@ -250,6 +250,17 @@ qq{
                 body_filter   = false,
                 log           = false,
                 admin_api     = true,
+            }, {
+                method        = "get_subsystem",
+                args          = {},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = true,
             },
         }
 

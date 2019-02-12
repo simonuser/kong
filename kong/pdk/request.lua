@@ -53,6 +53,22 @@ local function new(self)
 
 
   ---
+  -- Returns the Nginx subsystem used by the request. It can be
+  -- "http" or "stream"
+  --
+  -- @function kong.request.get_subsystem
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @treturn string a string with either `"http"` or `"stream"`
+  -- @usage
+  -- Kong.request.get_subsystem() -- "http"
+  function _REQUEST.get_subsystem()
+    check_phase(PHASES.request)
+
+    return ngx.config.subsystem
+  end
+
+
+  ---
   -- Returns the scheme component of the request's URL. The returned value is
   -- normalized to lower-case form.
   --
