@@ -1,6 +1,13 @@
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
+local kong = kong
+local fmt = string.format
+local tostring = tostring
+local tonumber = tonumber
+local encode_base64 = ngx.encode_base64
+local decode_base64 = ngx.decode_base64
+
 local off = {}
 
 
@@ -9,7 +16,22 @@ _mt.__index = _mt
 
 
 local function page_for_key(self, key, size, offset)
-  offset = offset and tonumber(offset) or 1
+  if offset then
+    local token = decode_base64(offset)
+    if not token then
+      return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
+    end
+
+    token = tonumber(token)
+    if not token then
+      return nil, self.errors:invalid_offset(offset, "invalid offset")
+    end
+
+    offset = token
+
+  else
+    offset = 1
+  end
 
   if not kong.cache then
     return {}
@@ -39,7 +61,7 @@ local function page_for_key(self, key, size, offset)
   end
 
   if offset then
-    return ret, nil, tostring(offset + size)
+    return ret, nil, encode_base64(tostring(offset + size), true)
   end
 
   return ret
@@ -77,6 +99,20 @@ end
 
 
 function off.new(connector, schema, errors)
+  local unsupported = function(operation)
+    local err = fmt("cannot %s '%s' entities when not using a database", operation, schema.name)
+    return function()
+      return nil, errors:operation_unsupported(err)
+    end
+  end
+
+  local unsupported_by = function(operation)
+    local err = fmt("cannot %s '%s' entities by '%s' when not using a database", operation, schema.name, '%s')
+    return function(_, field_name)
+      return nil, errors:operation_unsupported(fmt(err, field_name))
+    end
+  end
+
   local self = {
     connector = connector, -- instance of kong.db.strategies.off.connector
     schema = schema,
@@ -84,6 +120,13 @@ function off.new(connector, schema, errors)
     page = page,
     select = select,
     select_by_field = select_by_field,
+    insert = unsupported("create"),
+    update = unsupported("update"),
+    upsert = unsupported("create or update"),
+    delete = unsupported("remove"),
+    update_by_field = unsupported_by("update"),
+    upsert_by_field = unsupported_by("create or update"),
+    delete_by_field = unsupported_by("remove"),
     truncate = function() return true end,
   }
 
