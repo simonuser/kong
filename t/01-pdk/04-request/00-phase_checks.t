@@ -261,6 +261,17 @@ qq{
                 body_filter   = true,
                 log           = true,
                 admin_api     = true,
+            }, {
+                method        = "get_protocol",
+                args          = {},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = true,
             },
         }
 
